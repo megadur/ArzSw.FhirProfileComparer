@@ -1,0 +1,6 @@
+@ArzSw.FhirProfileComparer.Api_HostAddress = http://localhost:5038
+
+GET {{ArzSw.FhirProfileComparer.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

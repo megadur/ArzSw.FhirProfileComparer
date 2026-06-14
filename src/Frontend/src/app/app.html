@@ -1,0 +1,123 @@
+<div class="container">
+  <header class="header">
+    <div class="logo-area">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+      </svg>
+      <h1>FHIR Profile Comparer</h1>
+    </div>
+    <p class="subtitle">Delta-Analyse für E-Rezept Strukturdefinitionen</p>
+  </header>
+
+  <section class="glass-panel controls-panel">
+    <div class="form-group">
+      <label>Profil / Spezifikation</label>
+      <select class="input-field" [(ngModel)]="selectedPackage">
+        <option *ngFor="let pkg of packages" [value]="pkg.id">{{ pkg.name }} ({{ pkg.id }})</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Quell-Version</label>
+      <input type="text" class="input-field" [(ngModel)]="sourceVersion" placeholder="z.B. 1.1.0">
+    </div>
+
+    <div class="form-group">
+      <label>Ziel-Version</label>
+      <input type="text" class="input-field" [(ngModel)]="targetVersion" placeholder="z.B. 1.4.2">
+    </div>
+
+    <button class="btn" (click)="compare()" [disabled]="isLoading()">
+      {{ isLoading() ? 'Vergleiche...' : 'Vergleichen' }}
+    </button>
+  </section>
+
+  <div *ngIf="error()" class="glass-panel alert alert-danger">
+    {{ error() }}
+  </div>
+
+  <main *ngIf="result() as res" class="results-area">
+    
+    <div *ngIf="res.targetChangelog" class="glass-panel changelog-panel">
+      <h3>Release Notes ({{ res.targetVersion }})</h3>
+      <div class="markdown-body" [innerHTML]="getRenderedChangelog()"></div>
+    </div>
+
+    <h2>Deltas gefunden in {{ res.profiles.length }} Profilen</h2>
+    
+    <details *ngFor="let profile of res.profiles" class="glass-panel profile-card" open>
+      <summary class="profile-header">
+        <div class="profile-title-row">
+          <h3>{{ profile.profileName }}</h3>
+          <span *ngIf="profile.isNew" class="badge badge-new">NEUES PROFIL</span>
+          <span *ngIf="profile.isRemoved" class="badge badge-removed">GELÖSCHTES PROFIL</span>
+        </div>
+        <div class="url-actions">
+          <a [href]="'https://simplifier.net/resolve?fhir_version=R4&scope=' + res.packageId + '@' + res.targetVersion + '&canonical=' + profile.profileUrl" target="_blank" class="url">{{ profile.profileUrl }}</a>
+          <button class="btn-icon" (click)="copyUrl($event, profile.profileUrl)" title="URL kopieren">📋</button>
+        </div>
+        <div class="profile-path" *ngFor="let path of profile.profilePaths">
+          <span class="path-icon">↳</span> {{ path }}
+        </div>
+      </summary>
+
+      <details class="delta-section" *ngIf="profile.addedElements.length > 0" open>
+        <summary class="text-success"><span class="icon">+</span> Hinzugefügte Felder ({{ profile.addedElements.length }})</summary>
+        <table class="delta-table text-left w-100">
+          <tbody>
+            <tr *ngFor="let el of profile.addedElements">
+              <td style="width: 30%;"><strong>{{ el.sliceName || el.path.split('.').pop() }}</strong></td>
+              <td style="width: 50%;" class="text-gray-400">({{ el.path }})</td>
+              <td style="width: 20%;"><span class="badge">{{ el.type }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+
+      <details class="delta-section" *ngIf="profile.removedElements.length > 0" open>
+        <summary class="text-danger"><span class="icon">-</span> Entfernte Felder ({{ profile.removedElements.length }})</summary>
+        <table class="delta-table text-left w-100">
+          <tbody>
+            <tr *ngFor="let el of profile.removedElements">
+              <td style="width: 30%;"><strong>{{ el.sliceName || el.path.split('.').pop() }}</strong></td>
+              <td style="width: 70%;" class="text-gray-400">({{ el.path }})</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+
+      <details class="delta-section" *ngIf="profile.modifiedElements.length > 0" open>
+        <summary class="text-warning"><span class="icon">~</span> Modifikationen (Constraints & Werte) ({{ profile.modifiedElements.length }})</summary>
+        <table class="delta-table text-left">
+          <thead>
+            <tr>
+              <th>Beschreibung</th>
+              <th>Feld (Path)</th>
+              <th>Eigenschaft</th>
+              <th>Quell-Version</th>
+              <th>Ziel-Version</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let el of profile.modifiedElements">
+              <td><strong>{{ el.sliceName || el.path.split('.').pop() }}</strong></td>
+              <td class="text-gray-400">({{ el.path }})</td>
+              <td>{{ el.property }}</td>
+              <td class="old-val">{{ el.oldValue }}</td>
+              <td class="new-val">{{ el.newValue }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+    </details>
+  </main>
+  
+  <footer class="footer">
+    <p><strong>ITW FHIR Profile Comparer v{{ appVersion }}</strong></p>
+    <ul class="app-changelog">
+      <li *ngFor="let log of appChangelog">{{ log }}</li>
+    </ul>
+  </footer>
+</div>
