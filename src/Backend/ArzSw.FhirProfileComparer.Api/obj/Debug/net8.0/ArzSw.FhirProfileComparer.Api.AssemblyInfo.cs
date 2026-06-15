@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ArzSw.FhirProfileComparer.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+709e29786dba240f9234f6686372622a18dcac41")]
 [assembly: System.Reflection.AssemblyProductAttribute("ArzSw.FhirProfileComparer.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ArzSw.FhirProfileComparer.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
