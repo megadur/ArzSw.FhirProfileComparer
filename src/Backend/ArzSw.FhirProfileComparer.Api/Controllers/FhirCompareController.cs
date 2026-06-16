@@ -31,6 +31,7 @@ public class CompareController : ControllerBase
         try
         {
             var result = await _comparerService.CompareAsync(packageId, sourceVersion, targetVersion);
+            _logger.LogInformation("Comparison successfully executed for package '{PackageId}': v{SourceVersion} -> v{TargetVersion}", packageId, sourceVersion, targetVersion);
             return Ok(result);
         }
         catch (System.Net.Http.HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
