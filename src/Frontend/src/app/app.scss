@@ -212,9 +212,30 @@
 
     h1, h2, h3, h4 { margin-top: 16px; margin-bottom: 8px; color: #fff; }
     ul, ol { padding-left: 20px; margin-bottom: 16px; }
+    ul ul, ol ul, ul ol, ol ol { padding-left: 20px; margin-bottom: 4px; }
+    li { margin: 2px 0; }
     p { margin-bottom: 16px; }
     code { background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px; font-family: monospace; }
   }
+
+}
+
+:host ::ng-deep .changelog-panel .markdown-body ul,
+:host ::ng-deep .changelog-panel .markdown-body ol {
+  padding-left: 20px;
+  margin-bottom: 16px;
+}
+
+:host ::ng-deep .changelog-panel .markdown-body ul ul,
+:host ::ng-deep .changelog-panel .markdown-body ol ul,
+:host ::ng-deep .changelog-panel .markdown-body ul ol,
+:host ::ng-deep .changelog-panel .markdown-body ol ol {
+  padding-left: 20px;
+  margin-bottom: 4px;
+}
+
+:host ::ng-deep .changelog-panel .markdown-body li {
+  margin: 2px 0;
 }
 
 .footer {

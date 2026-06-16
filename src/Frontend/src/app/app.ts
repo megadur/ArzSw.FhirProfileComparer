@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { marked } from 'marked';
 
 export interface ElementDelta {
   path: string;
@@ -30,8 +31,6 @@ export interface CompareResult {
   targetChangelog: string;
   profiles: ProfileDelta[];
 }
-
-import { marked } from 'marked';
 
 @Component({
   selector: 'app-root',
@@ -67,7 +66,7 @@ export class App {
   ];
 
   selectedPackage = this.packages[0].id;
-  sourceVersion = '1.1.0';
+  sourceVersion = '1.3.0';
   targetVersion = '1.4.2';
 
   isLoading = signal(false);
@@ -89,7 +88,7 @@ export class App {
         if (this.selectedPackage.endsWith('-bundle')) {
           res.profiles = res.profiles.filter(p => p.profilePaths && p.profilePaths.some(path => path.includes('GEM_ERP_PR_Bundle')));
         }
-        
+
         for (const profile of res.profiles) {
           profile.addedElements = this.deduplicateElements(profile.addedElements);
           profile.removedElements = this.deduplicateElements(profile.removedElements);
@@ -116,7 +115,7 @@ export class App {
       if (!map.has(el.path)) map.set(el.path, []);
       map.get(el.path)!.push(el);
     }
-    
+
     const result: ElementDelta[] = [];
     for (const els of map.values()) {
       if (els.length === 1) {
@@ -136,7 +135,37 @@ export class App {
   getRenderedChangelog(): string {
     const cl = this.result()?.targetChangelog;
     if (!cl) return '';
-    return marked.parse(cl) as string;
+
+    const lines = cl.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const normalized: string[] = [];
+
+    for (const line of lines) {
+      const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
+      if (headingMatch) {
+        normalized.push(`${headingMatch[1]} ${headingMatch[2].trim()}`);
+        continue;
+      }
+
+      const bulletMatch = line.match(/^(\s*)([•●○◦\-\*])\s+(.*)$/u);
+      if (bulletMatch) {
+        const leading = bulletMatch[1];
+        const bullet = bulletMatch[2];
+        const text = bulletMatch[3].trim();
+
+        const tabs = (leading.match(/\t/g) || []).length;
+        const spaces = (leading.match(/ /g) || []).length;
+        const levelFromWhitespace = tabs + Math.floor(spaces / 2) + 1;
+        const levelFromSymbol = ['○', '◦'].includes(bullet) ? 2 : 1;
+        const level = Math.max(levelFromWhitespace, levelFromSymbol);
+
+        normalized.push(`${'  '.repeat(level - 1)}- ${text}`);
+        continue;
+      }
+
+      normalized.push(line.trimEnd());
+    }
+
+    return marked.parse(normalized.join('\n'), { gfm: true, breaks: true }) as string;
   }
 
   copyUrl(event: MouseEvent, url: string) {
