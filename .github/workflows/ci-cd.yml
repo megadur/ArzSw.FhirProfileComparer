@@ -1,0 +1,113 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies
+      run: |
+        dotnet restore src/Backend/ArzSw.FhirProfileComparer.Api/ArzSw.FhirProfileComparer.Api.csproj
+      
+    - name: Build
+      run: |
+        dotnet build src/Backend/ArzSw.FhirProfileComparer.Api/ArzSw.FhirProfileComparer.Api.csproj --no-restore -c Release
+      
+    # Uncomment when tests are added
+    # - name: Test
+    #   run: |
+    #     dotnet test src/Backend/ArzSw.FhirProfileComparer.Tests/ArzSw.FhirProfileComparer.Tests.csproj --no-build -c Release
+
+  build-and-push-images:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Log in to the Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata (tags, labels) for Docker - API
+      id: meta-api
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
+        tags: |
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=sha
+          
+    - name: Build and push Docker image - API
+      uses: docker/build-push-action@v5
+      with:
+        context: ./src/Backend/ArzSw.FhirProfileComparer.Api
+        file: src/Backend/ArzSw.FhirProfileComparer.Api/Dockerfile
+        push: true
+        tags: ${{ steps.meta-api.outputs.tags }}
+        labels: ${{ steps.meta-api.outputs.labels }}
+        
+    - name: Extract metadata (tags, labels) for Docker - Frontend
+      id: meta-frontend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+        tags: |
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=sha
+
+    - name: Build and push Docker image - Frontend
+      uses: docker/build-push-action@v5
+      with:
+        context: ./src/Frontend
+        file: src/Frontend/Dockerfile
+        push: true
+        tags: ${{ steps.meta-frontend.outputs.tags }}
+        labels: ${{ steps.meta-frontend.outputs.labels }}
+
+  deploy:
+    needs: build-and-push-images
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+    - name: Deploy to werktopf
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_KEY }}
+        port: ${{ secrets.DEPLOY_PORT }}
+        script: |
+          set -e
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+          # Update the path to wherever the new project is located on your server
+          cd /home/dontillo/data/apps/ArzSw.FhirProfileComparer
+          git pull https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+          docker compose pull
+          docker compose up -d --remove-orphans
